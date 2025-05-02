@@ -12,6 +12,8 @@ import cn.iocoder.yudao.module.bpm.service.definition.BpmCategoryService;
 import cn.iocoder.yudao.module.bpm.service.definition.BpmFormService;
 import cn.iocoder.yudao.module.bpm.service.definition.BpmModelService;
 import cn.iocoder.yudao.module.bpm.service.definition.BpmProcessDefinitionService;
+import cn.iocoder.yudao.module.system.api.dept.DeptApi;
+import cn.iocoder.yudao.module.system.api.dept.dto.DeptRespDTO;
 import cn.iocoder.yudao.module.system.api.user.AdminUserApi;
 import cn.iocoder.yudao.module.system.api.user.dto.AdminUserRespDTO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -53,11 +55,13 @@ public class BpmModelController {
 
     @Resource
     private AdminUserApi adminUserApi;
+    @Resource
+    private DeptApi deptApi;
 
     @GetMapping("/list")
     @Operation(summary = "获得模型分页")
     @Parameter(name = "name", description = "模型名称", example = "芋艿")
-    public CommonResult<List<BpmModelRespVO>> getModelPage(@RequestParam(value = "name", required = false) String name) {
+    public CommonResult<List<BpmModelRespVO>> getModelList(@RequestParam(value = "name", required = false) String name) {
         List<Model> list = modelService.getModelList(name);
         if (CollUtil.isEmpty(list)) {
             return success(Collections.emptyList());
@@ -79,14 +83,19 @@ public class BpmModelController {
         List<ProcessDefinition> processDefinitions = processDefinitionService.getProcessDefinitionListByDeploymentIds(
                 deploymentMap.keySet());
         Map<String, ProcessDefinition> processDefinitionMap = convertMap(processDefinitions, ProcessDefinition::getDeploymentId);
-        // 获得 User Map
+        // 获得 User Map、Dept Map
         Set<Long> userIds = convertSetByFlatMap(list, model -> {
             BpmModelMetaInfoVO metaInfo = BpmModelConvert.INSTANCE.parseMetaInfo(model);
             return metaInfo != null ? metaInfo.getStartUserIds().stream() : Stream.empty();
         });
         Map<Long, AdminUserRespDTO> userMap = adminUserApi.getUserMap(userIds);
+        Set<Long> deptIds = convertSetByFlatMap(list, model -> {
+            BpmModelMetaInfoVO metaInfo = BpmModelConvert.INSTANCE.parseMetaInfo(model);
+            return metaInfo != null && metaInfo.getStartDeptIds() != null ? metaInfo.getStartDeptIds().stream() : Stream.empty();
+        });
+        Map<Long, DeptRespDTO> deptMap = deptApi.getDeptMap(deptIds);
         return success(BpmModelConvert.INSTANCE.buildModelList(list,
-                formMap, categoryMap, deploymentMap, processDefinitionMap, userMap));
+                formMap, categoryMap, deploymentMap, processDefinitionMap, userMap, deptMap));
     }
 
     @GetMapping("/get")
@@ -99,7 +108,8 @@ public class BpmModelController {
             return null;
         }
         byte[] bpmnBytes = modelService.getModelBpmnXML(id);
-        return success(BpmModelConvert.INSTANCE.buildModel(model, bpmnBytes));
+        BpmSimpleModelNodeVO simpleModel = modelService.getSimpleModel(id);
+        return success(BpmModelConvert.INSTANCE.buildModel(model, bpmnBytes, simpleModel));
     }
 
     @PostMapping("/create")
@@ -108,7 +118,6 @@ public class BpmModelController {
     public CommonResult<String> createModel(@Valid @RequestBody BpmModelSaveReqVO createRetVO) {
         return success(modelService.createModel(createRetVO));
     }
-
 
     @PutMapping("/update")
     @Operation(summary = "修改模型")
@@ -143,6 +152,7 @@ public class BpmModelController {
         return success(true);
     }
 
+    @Deprecated
     @PutMapping("/update-bpmn")
     @Operation(summary = "修改模型的 BPMN")
     @PreAuthorize("@ss.hasPermission('bpm:model:update')")
@@ -160,6 +170,15 @@ public class BpmModelController {
         return success(true);
     }
 
+    @DeleteMapping("/clean")
+    @Operation(summary = "清理模型")
+    @Parameter(name = "id", description = "编号", required = true, example = "1024")
+    @PreAuthorize("@ss.hasPermission('bpm:model:clean')")
+    public CommonResult<Boolean> cleanModel(@RequestParam("id") String id) {
+        modelService.cleanModel(getLoginUserId(), id);
+        return success(true);
+    }
+
     // ========== 仿钉钉/飞书的精简模型 =========
 
     @GetMapping("/simple/get")
@@ -169,6 +188,7 @@ public class BpmModelController {
         return success(modelService.getSimpleModel(modelId));
     }
 
+    @Deprecated
     @PostMapping("/simple/update")
     @Operation(summary = "保存仿钉钉流程设计模型")
     @PreAuthorize("@ss.hasPermission('bpm:model:update')")

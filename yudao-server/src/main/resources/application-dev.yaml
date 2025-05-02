@@ -4,6 +4,10 @@ server:
 --- #################### 数据库相关配置 ####################
 
 spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.autoconfigure.vectorstore.qdrant.QdrantVectorStoreAutoConfiguration # 禁用 AI 模块的 Qdrant，手动创建
+      - org.springframework.ai.autoconfigure.vectorstore.milvus.MilvusVectorStoreAutoConfiguration # 禁用 AI 模块的 Milvus，手动创建
   # 数据源配置项
   autoconfigure:
     exclude:
@@ -167,7 +171,8 @@ yudao:
   pay:
     order-notify-url: http://yunai.natapp1.cc/admin-api/pay/notify/order # 支付渠道的【支付】回调地址
     refund-notify-url: http://yunai.natapp1.cc/admin-api/pay/notify/refund # 支付渠道的【退款】回调地址
-  demo: true # 开启演示模式
+    transfer-notify-url: https://yunai.natapp1.cc/admin-api/pay/notify/transfer # 支付渠道的【转账】回调地址
+  demo: false # 开启演示模式
   tencent-lbs-key: TVDBZ-TDILD-4ON4B-PFDZA-RNLKH-VVF6E # QQ 地图的密钥 https://lbs.qq.com/service/staticV2/staticGuide/staticDoc
 
 justauth:
@@ -183,7 +188,7 @@ justauth:
       agent-id: 1000004
       ignore-check-redirect-uri: true
     # noinspection SpringBootApplicationYaml
-    WECHAT_MINI_APP: # 微信小程序
+    WECHAT_MINI_PROGRAM: # 微信小程序
       client-id: ${wx.miniapp.appid}
       client-secret: ${wx.miniapp.secret}
       ignore-check-redirect-uri: true
@@ -215,3 +220,8 @@ iot:
     keepalive: 60
     # 清除会话(设置为false,断开连接，重连后使用原来的会话 保留订阅的主题，能接收离线期间的消息)
     clearSession: true
+
+
+# 插件配置
+pf4j:
+  pluginsDir: ${user.home}/plugins # 插件目录

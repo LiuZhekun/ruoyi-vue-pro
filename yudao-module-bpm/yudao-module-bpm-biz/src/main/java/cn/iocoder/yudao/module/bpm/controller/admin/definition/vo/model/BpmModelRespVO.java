@@ -1,6 +1,8 @@
 package cn.iocoder.yudao.module.bpm.controller.admin.definition.vo.model;
 
+import cn.iocoder.yudao.module.bpm.controller.admin.base.dept.DeptSimpleBaseVO;
 import cn.iocoder.yudao.module.bpm.controller.admin.base.user.UserSimpleBaseVO;
+import cn.iocoder.yudao.module.bpm.controller.admin.definition.vo.model.simple.BpmSimpleModelNodeVO;
 import cn.iocoder.yudao.module.bpm.controller.admin.definition.vo.process.BpmProcessDefinitionRespVO;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
@@ -24,7 +26,7 @@ public class BpmModelRespVO extends BpmModelMetaInfoVO {
     @Schema(description = "流程图标", example = "https://www.iocoder.cn/yudao.jpg")
     private String icon;
 
-    @Schema(description = "流程分类编码", example = "1")
+    @Schema(description = "流程分类编号", example = "1")
     private String category;
     @Schema(description = "流程分类名字", example = "请假")
     private String categoryName;
@@ -35,11 +37,17 @@ public class BpmModelRespVO extends BpmModelMetaInfoVO {
     @Schema(description = "创建时间", requiredMode = Schema.RequiredMode.REQUIRED)
     private LocalDateTime createTime;
 
-    @Schema(description = "BPMN XML", requiredMode = Schema.RequiredMode.REQUIRED)
-    private String bpmnXml;
-
     @Schema(description = "可发起的用户数组")
     private List<UserSimpleBaseVO> startUsers;
+
+    @Schema(description = "可发起的部门数组")
+    private List<DeptSimpleBaseVO> startDepts;
+
+    @Schema(description = "BPMN XML")
+    private String bpmnXml;
+
+    @Schema(description = "仿钉钉流程设计模型对象")
+    private BpmSimpleModelNodeVO simpleModel;
 
     /**
      * 最新部署的流程定义

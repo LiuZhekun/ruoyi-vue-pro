@@ -3,6 +3,7 @@ package cn.iocoder.yudao.module.system.service.user;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.io.IoUtil;
+import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.iocoder.yudao.framework.common.enums.CommonStatusEnum;
 import cn.iocoder.yudao.framework.common.exception.ServiceException;
@@ -46,8 +47,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
-import static cn.iocoder.yudao.framework.common.util.collection.CollectionUtils.convertList;
-import static cn.iocoder.yudao.framework.common.util.collection.CollectionUtils.convertSet;
+import static cn.iocoder.yudao.framework.common.util.collection.CollectionUtils.*;
 import static cn.iocoder.yudao.module.system.enums.ErrorCodeConstants.*;
 import static cn.iocoder.yudao.module.system.enums.LogRecordConstants.*;
 
@@ -61,6 +61,8 @@ import static cn.iocoder.yudao.module.system.enums.LogRecordConstants.*;
 public class AdminUserServiceImpl implements AdminUserService {
 
     static final String USER_INIT_PASSWORD_KEY = "system.user.init-password";
+
+    static final String USER_REGISTER_ENABLED_KEY = "system.user.register-enabled";
 
     @Resource
     private AdminUserMapper userMapper;
@@ -118,14 +120,18 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     @Override
     public Long registerUser(AuthRegisterReqVO registerReqVO) {
-        // 1.1 校验账户配合
+        // 1.1 校验是否开启注册
+        if (ObjUtil.notEqual(configApi.getConfigValueByKey(USER_REGISTER_ENABLED_KEY), "true")) {
+            throw exception(USER_REGISTER_DISABLED);
+        }
+        // 1.2 校验账户配合
         tenantService.handleTenantInfo(tenant -> {
             long count = userMapper.selectCount();
             if (count >= tenant.getAccountCount()) {
                 throw exception(USER_COUNT_MAX, tenant.getAccountCount());
             }
         });
-        // 1.2 校验正确性
+        // 1.3 校验正确性
         validateUserForCreateOrUpdate(null, registerReqVO.getUsername(), null, null, null, null);
 
         // 2. 插入用户
@@ -272,7 +278,12 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     @Override
     public PageResult<AdminUserDO> getUserPage(UserPageReqVO reqVO) {
-        return userMapper.selectPage(reqVO, getDeptCondition(reqVO.getDeptId()));
+        // 如果有角色编号，查询角色对应的用户编号
+        Set<Long> userIds = reqVO.getRoleId() != null ?
+                permissionService.getUserRoleIdListByRoleId(singleton(reqVO.getRoleId())) : null;
+
+        // 分页查询
+        return userMapper.selectPage(reqVO, getDeptCondition(reqVO.getDeptId()), userIds);
     }
 
     @Override

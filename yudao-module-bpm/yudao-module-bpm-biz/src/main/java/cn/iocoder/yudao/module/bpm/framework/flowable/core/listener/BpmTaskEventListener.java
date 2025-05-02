@@ -4,11 +4,10 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.iocoder.yudao.framework.common.util.number.NumberUtils;
-import cn.iocoder.yudao.module.bpm.enums.definition.BpmBoundaryEventType;
+import cn.iocoder.yudao.module.bpm.enums.definition.BpmBoundaryEventTypeEnum;
 import cn.iocoder.yudao.module.bpm.framework.flowable.core.enums.BpmnModelConstants;
 import cn.iocoder.yudao.module.bpm.framework.flowable.core.util.BpmnModelUtils;
 import cn.iocoder.yudao.module.bpm.service.definition.BpmModelService;
-import cn.iocoder.yudao.module.bpm.service.task.BpmActivityService;
 import cn.iocoder.yudao.module.bpm.service.task.BpmTaskService;
 import com.google.common.collect.ImmutableSet;
 import lombok.extern.slf4j.Slf4j;
@@ -44,14 +43,11 @@ public class BpmTaskEventListener extends AbstractFlowableEngineEventListener {
     @Resource
     @Lazy // 解决循环依赖
     private BpmTaskService taskService;
-    @Resource
-    @Lazy // 解决循环依赖
-    private BpmActivityService activityService;
 
     public static final Set<FlowableEngineEventType> TASK_EVENTS = ImmutableSet.<FlowableEngineEventType>builder()
             .add(FlowableEngineEventType.TASK_CREATED)
             .add(FlowableEngineEventType.TASK_ASSIGNED)
-//            .add(FlowableEngineEventType.TASK_COMPLETED) // 由于审批通过时，已经记录了 task 的 status 为通过，所以不需要监听了。
+            .add(FlowableEngineEventType.TASK_COMPLETED) // 由于审批通过时，已经记录了 task 的 status 为通过，这里仅处理任务后置通知。
             .add(FlowableEngineEventType.ACTIVITY_CANCELLED)
             .add(FlowableEngineEventType.TIMER_FIRED) // 监听审批超时
             .build();
@@ -71,8 +67,13 @@ public class BpmTaskEventListener extends AbstractFlowableEngineEventListener {
     }
 
     @Override
+    protected void taskCompleted(FlowableEngineEntityEvent event) {
+        taskService.processTaskCompleted((Task) event.getEntity());
+    }
+
+    @Override
     protected void activityCancelled(FlowableActivityCancelledEvent event) {
-        List<HistoricActivityInstance> activityList = activityService.getHistoricActivityListByExecutionId(event.getExecutionId());
+        List<HistoricActivityInstance> activityList = taskService.getHistoricActivityListByExecutionId(event.getExecutionId());
         if (CollUtil.isEmpty(activityList)) {
             log.error("[activityCancelled][使用 executionId({}) 查找不到对应的活动实例]", event.getExecutionId());
             return;
@@ -87,6 +88,7 @@ public class BpmTaskEventListener extends AbstractFlowableEngineEventListener {
     }
 
     @Override
+    @SuppressWarnings("PatternVariableCanBeUsed")
     protected void timerFired(FlowableEngineEntityEvent event) {
         // 1.1 只处理 BoundaryEvent 边界计时时间
         String processDefinitionId = event.getProcessDefinitionId();
@@ -100,16 +102,24 @@ public class BpmTaskEventListener extends AbstractFlowableEngineEventListener {
         BoundaryEvent boundaryEvent = (BoundaryEvent) element;
         String boundaryEventType = BpmnModelUtils.parseBoundaryEventExtensionElement(boundaryEvent,
                 BpmnModelConstants.BOUNDARY_EVENT_TYPE);
-        BpmBoundaryEventType bpmTimerBoundaryEventType = BpmBoundaryEventType.typeOf(NumberUtils.parseInt(boundaryEventType));
-        if (ObjectUtil.notEqual(bpmTimerBoundaryEventType, BpmBoundaryEventType.USER_TASK_TIMEOUT)) {
-            return;
-        }
+        BpmBoundaryEventTypeEnum bpmTimerBoundaryEventType = BpmBoundaryEventTypeEnum.typeOf(NumberUtils.parseInt(boundaryEventType));
 
         // 2. 处理超时
-        String timeoutHandlerType = BpmnModelUtils.parseBoundaryEventExtensionElement(boundaryEvent,
-                BpmnModelConstants.USER_TASK_TIMEOUT_HANDLER_TYPE);
-        String taskKey = boundaryEvent.getAttachedToRefId();
-        taskService.processTaskTimeout(event.getProcessInstanceId(), taskKey, NumberUtils.parseInt(timeoutHandlerType));
+        if (ObjectUtil.equal(bpmTimerBoundaryEventType, BpmBoundaryEventTypeEnum.USER_TASK_TIMEOUT)) {
+            // 2.1 用户任务超时处理
+            String timeoutHandlerType = BpmnModelUtils.parseBoundaryEventExtensionElement(boundaryEvent,
+                    BpmnModelConstants.USER_TASK_TIMEOUT_HANDLER_TYPE);
+            String taskKey = boundaryEvent.getAttachedToRefId();
+            taskService.processTaskTimeout(event.getProcessInstanceId(), taskKey, NumberUtils.parseInt(timeoutHandlerType));
+            // 2.2 延迟器超时处理
+        } else if (ObjectUtil.equal(bpmTimerBoundaryEventType, BpmBoundaryEventTypeEnum.DELAY_TIMER_TIMEOUT)) {
+            String taskKey = boundaryEvent.getAttachedToRefId();
+            taskService.triggerTask(event.getProcessInstanceId(), taskKey);
+            // 2.3 子流程超时处理
+        } else if (ObjectUtil.equal(bpmTimerBoundaryEventType, BpmBoundaryEventTypeEnum.CHILD_PROCESS_TIMEOUT)) {
+            String taskKey = boundaryEvent.getAttachedToRefId();
+            taskService.processChildProcessTimeout(event.getProcessInstanceId(), taskKey);
+        }
     }
 
 }

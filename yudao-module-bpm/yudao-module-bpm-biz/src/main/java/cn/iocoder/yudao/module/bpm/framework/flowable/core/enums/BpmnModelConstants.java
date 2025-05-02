@@ -1,5 +1,7 @@
 package cn.iocoder.yudao.module.bpm.framework.flowable.core.enums;
 
+import cn.iocoder.yudao.module.bpm.enums.definition.BpmModelTypeEnum;
+
 /**
  * BPMN XML 常量信息
  *
@@ -52,7 +54,7 @@ public interface BpmnModelConstants {
      */
     String USER_TASK_REJECT_HANDLER_TYPE = "rejectHandlerType";
     /**
-     * BPMN ExtensionElement 的扩展属性，用于标记用户任务拒绝后的回退的任务 Id
+     * BPMN ExtensionElement 的扩展属性，用于标记用户任务拒绝后的退回的任务 Id
      */
     String USER_TASK_REJECT_RETURN_TASK_ID = "rejectReturnTaskId";
 
@@ -65,6 +67,11 @@ public interface BpmnModelConstants {
      * BPMN UserTask 的扩展属性，用于标记用户任务的审批方式
      */
     String USER_TASK_APPROVE_METHOD = "approveMethod";
+
+    /**
+     * BPMN Child Process 的扩展属性，用于标记多实例来源类型
+     */
+    String CHILD_PROCESS_MULTI_INSTANCE_SOURCE_TYPE = "childProcessMultiInstanceSourceType";
 
     /**
      * BPMN ExtensionElement 流程表单字段权限元素, 用于标记字段权限
@@ -101,17 +108,39 @@ public interface BpmnModelConstants {
     String BUTTON_SETTING_ELEMENT_ENABLE_ATTRIBUTE = "enable";
 
     /**
+     * BPMN ExtensionElement 的扩展属性，用于标记触发器的类型
+     */
+    String TRIGGER_TYPE = "triggerType";
+    /**
+     * BPMN ExtensionElement 的扩展属性，用于标记触发器参数
+     */
+    String TRIGGER_PARAM = "triggerParam";
+
+    /**
      * BPMN Start Event Node Id
      */
     String START_EVENT_NODE_ID = "StartEvent";
-    /**
-     * BPMN Start Event Node Name
-     */
-    String START_EVENT_NODE_NAME = "开始";
 
     /**
      * 发起人节点 ID
      */
     String START_USER_NODE_ID = "StartUserNode";
+
+    /**
+     * 是否需要签名
+     */
+    String SIGN_ENABLE = "signEnable";
+
+    /**
+     * 审批意见是否必填
+     */
+    String REASON_REQUIRE = "reasonRequire";
+
+    /**
+     * 节点类型
+     *
+     * 目前只有 {@link BpmModelTypeEnum#SIMPLE} 的 UserTask 节点会设置该属性，用于区分是审批节点、还是办理节点
+     */
+    String NODE_TYPE = "nodeType";
 
 }

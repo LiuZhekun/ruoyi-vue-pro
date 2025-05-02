@@ -1,7 +1,9 @@
 package cn.iocoder.yudao.module.bpm.dal.dataobject.definition;
 
 import cn.iocoder.yudao.framework.mybatis.core.dataobject.BaseDO;
-import cn.iocoder.yudao.framework.mybatis.core.type.StringListTypeHandler;
+import cn.iocoder.yudao.framework.mybatis.core.type.LongListTypeHandler;
+import cn.iocoder.yudao.module.bpm.controller.admin.definition.vo.model.BpmModelMetaInfoVO;
+import cn.iocoder.yudao.module.bpm.enums.definition.BpmAutoApproveTypeEnum;
 import cn.iocoder.yudao.module.bpm.enums.definition.BpmModelFormTypeEnum;
 import cn.iocoder.yudao.module.bpm.enums.definition.BpmModelTypeEnum;
 import cn.iocoder.yudao.module.system.api.user.dto.AdminUserRespDTO;
@@ -57,6 +59,14 @@ public class BpmProcessDefinitionInfoDO extends BaseDO {
      */
     private Integer modelType;
 
+    /**
+     * 流程分类的编码
+     *
+     * 关联 {@link BpmCategoryDO#getCode()}
+     *
+     * 为什么要存储？原因是，{@link ProcessDefinition#getCategory()} 无法设置
+     */
+    private String category;
     /**
      * 图标
      */
@@ -122,6 +132,10 @@ public class BpmProcessDefinitionInfoDO extends BaseDO {
      * 目的：如果 false 不可见，则不展示在“发起流程”的列表里
      */
     private Boolean visible;
+    /**
+     * 排序值
+     */
+    private Long sort;
 
     /**
      * 可发起用户编号数组
@@ -134,15 +148,75 @@ public class BpmProcessDefinitionInfoDO extends BaseDO {
      * 1. {@link #visible} 只是决定是否可见。即使不可见，还是可以发起
      * 2. startUserIds 决定某个用户是否可以发起。如果该用户不可发起，则他也是不可见的
      */
-    @TableField(typeHandler = StringListTypeHandler.class) // 为了可以使用 find_in_set 进行过滤
+    @TableField(typeHandler = LongListTypeHandler.class) // 为了可以使用 find_in_set 进行过滤
     private List<Long> startUserIds;
+
+    /**
+     * 可发起部门编号数组
+     *
+     * 关联 {@link AdminUserRespDTO#getDeptId()} 字段的数组
+     */
+    @TableField(typeHandler = LongListTypeHandler.class)
+    private List<Long> startDeptIds;
 
     /**
      * 可管理用户编号数组
      *
      * 关联 {@link AdminUserRespDTO#getId()} 字段的数组
      */
-    @TableField(typeHandler = StringListTypeHandler.class) // 为了可以使用 find_in_set 进行过滤
+    @TableField(typeHandler = LongListTypeHandler.class) // 为了可以使用 find_in_set 进行过滤
     private List<Long> managerUserIds;
+
+    /**
+     * 是否允许撤销审批中的申请
+     */
+    private Boolean allowCancelRunningProcess;
+
+    /**
+     * 流程 ID 规则
+     */
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    private BpmModelMetaInfoVO.ProcessIdRule processIdRule;
+
+    /**
+     * 自动去重类型
+     *
+     * 枚举 {@link BpmAutoApproveTypeEnum}
+     */
+    private Integer autoApprovalType;
+
+    /**
+     * 标题设置
+     */
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    private BpmModelMetaInfoVO.TitleSetting titleSetting;
+    /**
+     * 摘要设置
+     */
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    private BpmModelMetaInfoVO.SummarySetting summarySetting;
+
+    /**
+     * 流程前置通知设置
+     */
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    private BpmModelMetaInfoVO.HttpRequestSetting processBeforeTriggerSetting;
+    /**
+     * 流程后置通知设置
+     */
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    private BpmModelMetaInfoVO.HttpRequestSetting processAfterTriggerSetting;
+
+    /**
+     * 任务前置通知设置
+     */
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    private BpmModelMetaInfoVO.HttpRequestSetting taskBeforeTriggerSetting;
+
+    /**
+     * 任务后置通知设置
+     */
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    private BpmModelMetaInfoVO.HttpRequestSetting taskAfterTriggerSetting;
 
 }
